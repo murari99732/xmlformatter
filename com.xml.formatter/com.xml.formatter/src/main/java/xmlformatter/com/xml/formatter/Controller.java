@@ -1,5 +1,6 @@
 package xmlformatter.com.xml.formatter;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -31,18 +32,32 @@ public class Controller {
 	private FileValue fileStorageService;
 
 	@PostMapping("/insertXMLfile")
-	public FileDTO insertfile(@RequestParam("file") MultipartFile file) {
-		String fileName = fileStorageService.storeFile(file);
+	public FileDTO insertfile(@RequestParam("file") MultipartFile file) throws FileNotFoundException {
+		String filename = file.getName().toUpperCase();
+		if (file.getOriginalFilename().contains("XML")) {
+			String fileName = fileStorageService.storeFile(file);
 
-		String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath().path("/downloadFile/")
-				.path(fileName).toUriString();
+			String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath().path("/downloadFile/")
+					.path(fileName).toUriString();
 
-		return new FileDTO(fileName, fileDownloadUri, file.getContentType(), file.getSize());
+			return new FileDTO(fileName, fileDownloadUri, file.getContentType(), file.getSize());
+		} else {
+			throw new FileNotFoundException();
+
+		}
 	}
 
 	@PostMapping("/insertXMLfiles")
 	public List<FileDTO> insertfiles(@RequestParam("files") MultipartFile[] files) {
-		return Arrays.asList(files).stream().map(file -> insertfile(file)).collect(Collectors.toList());
+		return Arrays.asList(files).stream().map(file -> {
+			try {
+				return insertfile(file);
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return null;
+		}).collect(Collectors.toList());
 	}
 
 	@GetMapping("/downloadFile/{fileName:.+}")
@@ -65,4 +80,5 @@ public class Controller {
 				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
 				.body(resource);
 	}
+
 }
